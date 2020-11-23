@@ -1,0 +1,20 @@
+import tensorflow as tf 
+import numpy as np 
+from tensorflow.keras import Model
+
+class Model(tf.keras.Model):
+	def __init__(self):
+		super(Model, self).__init__()
+
+		#HyperParamaters 
+		self.optimizer = tf.keras.optimizers.Adam(learning_rate = 0.01)
+		self.embedding_size = 300
+		self.h1 = 300
+		self.batch_size = 64
+
+
+		self.biLSTM = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units = self.h1, 
+			return_sequences = True, return_state = True))
+
+
+
