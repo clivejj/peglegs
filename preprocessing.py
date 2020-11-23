@@ -2,6 +2,7 @@ import csv
 from ekphrasis.classes.preprocessor import TextPreProcessor
 import numpy as np
 import gensim.downloader as gd
+from nltk.corpus import wordnet as wn
 
 text_processor = TextPreProcessor(
     normalize=["url", "number", "user"],
@@ -19,10 +20,10 @@ def preprocess(sentimentFile, emotionFile):
         # remove first line
         data = list(csv.reader(f))[1:]
     num_tweets = len(data)
-    # (num_tweets x 1) aray containing sentiment labels for each sentance (-1, 0, 1)
+    # (num_tweets x 1) aray containing sentiment labels for each sentence (-1, 0, 1)
     sentiment_labels = np.zeros((num_tweets, 1))
-    # list of np arrays, with each array containing indices for the words in that sentance
-    sentances = [None] * num_tweets
+    # list of np arrays, with each array containing indices for the words in that sentence
+    sentences = [None] * num_tweets
     # loop thru every row in csv file, extract data
     for tweet_index in range(num_tweets):
         row = data[tweet_index]
@@ -42,14 +43,14 @@ def preprocess(sentimentFile, emotionFile):
                 word_indices[i] = word_counter
                 word_counter += 1
 
-        sentances[tweet_index] = word_indices
+        sentences[tweet_index] = word_indices
 
         # extract sentiment
         sentiment = row[4]
         sentiment = ["neg", "other", "pos"].index(sentiment) - 1
         sentiment_labels[tweet_index] = sentiment
 
-    # create labels for emotions for each sentance
+    # create labels for emotions for each sentence
     # label is either 0 or 1 for each emotion
     emotion_labels = np.zeros((num_tweets, 8))
     # loop thru new emotion file
@@ -64,12 +65,16 @@ def preprocess(sentimentFile, emotionFile):
             row = np.zeros((1, 8))
         emotion_labels[tweet_index, :] = row
 
-    return (vocab, sentances, sentiment_labels, emotion_labels)
+    return (vocab, sentences, sentiment_labels, emotion_labels)
 
 
-preprocess("data/train_tweet_sentiment.csv", "data/train_emotion.csv")
+# preprocess("data/train_tweet_sentiment.csv", "data/train_emotion.csv")
 
 
 def get_vec():
     word_2_vec = gd.load('word2vec-google-news-300')
     return word_2_vec
+
+def main():
+    preprocess("data/train_tweet_sentiment.csv", "data/train_emotion.csv")
+    word_2_vec = get_vec()
