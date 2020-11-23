@@ -3,6 +3,8 @@ from ekphrasis.classes.preprocessor import TextPreProcessor
 import numpy as np
 import gensim.downloader as gd
 from nltk.corpus import wordnet as wn
+from os import path
+import pickle
 
 text_processor = TextPreProcessor(
     normalize=["url", "number", "user"],
@@ -72,9 +74,16 @@ def preprocess(sentimentFile, emotionFile):
 
 
 def get_vec():
-    word_2_vec = gd.load('word2vec-google-news-300')
+    targetFile = "data/word2vec.pickle"
+    if not path.exists(targetFile):
+        word_2_vec = gd.load("word2vec-google-news-300")
+        pickle.dump(word_2_vec, open(targetFile, "wb"))
+    else:
+        word_2_vec = pickle.load(open(targetFile, "rb"))
     return word_2_vec
+
 
 def main():
     preprocess("data/train_tweet_sentiment.csv", "data/train_emotion.csv")
     word_2_vec = get_vec()
+
