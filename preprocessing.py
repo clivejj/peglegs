@@ -2,9 +2,13 @@ import csv
 from ekphrasis.classes.preprocessor import TextPreProcessor
 import numpy as np
 import gensim.downloader as gd
-from nltk.corpus import wordnet as wn
 from os import path
 import pickle
+import nltk
+from nltk.corpus import wordnet as wn
+import string
+
+nltk.download("wordnet")
 
 text_processor = TextPreProcessor(
     normalize=["url", "number", "user"],
@@ -30,7 +34,11 @@ def preprocess(sentimentFile, emotionFile):
     for tweet_index in range(num_tweets):
         row = data[tweet_index]
         # extract text of tweet and clean it with ekphrasis
-        tweet = text_processor.pre_process_doc(row[0]).split()
+        tweet = text_processor.pre_process_doc(row[0])
+        tweet = tweet.translate(str.maketrans("", "", string.punctuation))
+
+        tweet = tweet.split()
+
         # create array for each tweet holding indices corresponding to words
         num_words = len(tweet)
         word_indices = np.zeros((num_words, 1), dtype=np.int32)
@@ -70,7 +78,45 @@ def preprocess(sentimentFile, emotionFile):
     return (vocab, sentences, sentiment_labels, emotion_labels)
 
 
-# preprocess("data/train_tweet_sentiment.csv", "data/train_emotion.csv")
+def getSynonyms(word):
+    l = []
+    for s in wn.synsets(word):
+        w = s.lemmas()[0].name()
+        if "_" in w or "-" in w:
+            continue
+        w = w.translate(str.maketrans("", "", string.punctuation))
+        if w not in l and w != word:
+            l.append(w)
+        if len(l) == 4:
+            return l
+    return l
+
+
+def expand_vocab(vocab):
+    words = list(vocab.keys())
+    i = len(vocab)
+    for word in words:
+        for syn in getSynonyms(word):
+            if syn not in vocab:
+                vocab[syn] = i
+                i += 1
+    return vocab
+
+
+def create_embeddings(vocab, word_2_vec):
+    embeddings = np.zeros((len(vocab), 300))
+    i = 0
+    for word in vocab:
+        if word in word_2_vec:
+            embeddings[vocab[word], :] = word_2_vec[word]
+        elif word.lower() in word_2_vec:
+            embeddings[vocab[word], :] = word_2_vec[word.lower()]
+        else:
+            embeddings[vocab[word], :] = np.random.normal(0, 0.5, (1, 300))
+            i += 1
+    print(i)
+
+    return embeddings
 
 
 def get_vec():
@@ -81,9 +127,4 @@ def get_vec():
     else:
         word_2_vec = pickle.load(open(targetFile, "rb"))
     return word_2_vec
-
-
-def main():
-    preprocess("data/train_tweet_sentiment.csv", "data/train_emotion.csv")
-    word_2_vec = get_vec()
 
