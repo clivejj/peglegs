@@ -37,6 +37,7 @@ def preprocess(sentimentFile, emotionFile, word_2_vec):
     sentiment_labels = np.zeros((num_tweets, 1))
     # list of np arrays, with each array containing indices for the words in that sentence
     sentences = [None] * num_tweets
+    i = 0
     # loop thru every row in csv file, extract data
     for tweet_index in range(num_tweets):
         row = data[tweet_index]
@@ -56,6 +57,8 @@ def preprocess(sentimentFile, emotionFile, word_2_vec):
                 vocab[word] = word_counter
                 word_indices.append(word_counter)
                 word_counter += 1
+            else:
+                i += 1
 
         sentences[tweet_index] = np.asarray(word_indices, dtype=np.int32)
 
@@ -63,7 +66,7 @@ def preprocess(sentimentFile, emotionFile, word_2_vec):
         sentiment = row[4]
         sentiment = ["neg", "other", "pos"].index(sentiment) - 1
         sentiment_labels[tweet_index] = sentiment
-
+    print(i)
     # create labels for emotions for each sentence
     # label is either 0 or 1 for each emotion
     emotion_labels = np.zeros((num_tweets, 8))
