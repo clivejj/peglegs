@@ -7,6 +7,11 @@ import pickle
 import nltk
 from nltk.corpus import wordnet as wn
 import string
+from ekphrasis.classes.segmenter import Segmenter
+from ekphrasis.classes.tokenizer import SocialTokenizer
+
+
+seg = Segmenter(corpus="twitter")
 
 nltk.download("wordnet")
 
@@ -15,10 +20,12 @@ text_processor = TextPreProcessor(
     segmenter="twitter",
     unpack_hashtags=True,
     unpack_contractions=True,
+    spell_correct_elong=True,
+    tokenizer=SocialTokenizer(lowercase=True).tokenize,
 )
 
 
-def preprocess(sentimentFile, emotionFile):
+def preprocess(sentimentFile, emotionFile, word_2_vec):
     # dict with word (str) -> word index (int)
     vocab = {}
     word_counter = 0
@@ -35,25 +42,22 @@ def preprocess(sentimentFile, emotionFile):
         row = data[tweet_index]
         # extract text of tweet and clean it with ekphrasis
         tweet = text_processor.pre_process_doc(row[0])
-        tweet = tweet.translate(str.maketrans("", "", string.punctuation))
-
-        tweet = tweet.split()
+        # tweet = sum([seg.segment(x).split() for x in tweet if len(x) > 1], [])
+        tweet = sum([seg.segment(x).split() for x in tweet], [])
 
         # create array for each tweet holding indices corresponding to words
-        num_words = len(tweet)
-        word_indices = np.zeros((num_words, 1), dtype=np.int32)
-        for i in range(num_words):
-            word = tweet[i]
+        word_indices = []
+        for word in tweet:
             # if word is not new, simply add its index to list
             if word in vocab:
-                word_indices[i] = vocab[word]
+                word_indices.append(vocab[word])
             # if word is new, add it to vocab and then add its index to list
-            else:
+            elif word in word_2_vec:
                 vocab[word] = word_counter
-                word_indices[i] = word_counter
+                word_indices.append(word_counter)
                 word_counter += 1
 
-        sentences[tweet_index] = word_indices
+        sentences[tweet_index] = np.asarray(word_indices, dtype=np.int32)
 
         # extract sentiment
         sentiment = row[4]
@@ -78,44 +82,35 @@ def preprocess(sentimentFile, emotionFile):
     return (vocab, sentences, sentiment_labels, emotion_labels)
 
 
-def getSynonyms(word):
-    l = []
-    for s in wn.synsets(word):
-        w = s.lemmas()[0].name()
-        if "_" in w or "-" in w:
-            continue
-        w = w.translate(str.maketrans("", "", string.punctuation))
-        if w not in l and w != word:
-            l.append(w)
-        if len(l) == 4:
-            return l
-    return l
-
-
-def expand_vocab(vocab):
-    words = list(vocab.keys())
+def expand_vocab(vocab, word_2_vec):
+    corpus = list(vocab.keys())
+    synonyms_indices = {}
+    len_corpus = len(vocab)
+    q = 0
+    old = 0
     i = len(vocab)
-    for word in words:
-        for syn in getSynonyms(word):
-            if syn not in vocab:
-                vocab[syn] = i
+    for word in corpus:
+        if np.floor(q * 100 / len_corpus) != old:
+            print(old)
+            old = np.floor(q * 100 / len_corpus)
+
+        synonyms_indices[vocab[word]] = []
+        synonyms = [x[0] for x in word_2_vec.most_similar(positive=[word], topn=4)]
+        for synonym in synonyms:
+            if synonym in vocab:
+                synonyms_indices[vocab[word]] += [vocab[synonym]]
+            else:
+                vocab[synonym] = i
+                synonyms_indices[vocab[word]] += [i]
                 i += 1
-    return vocab
+        q += 1
+    return synonyms_indices
 
 
 def create_embeddings(vocab, word_2_vec):
     embeddings = np.zeros((len(vocab), 300))
-    i = 0
     for word in vocab:
-        if word in word_2_vec:
-            embeddings[vocab[word], :] = word_2_vec[word]
-        elif word.lower() in word_2_vec:
-            embeddings[vocab[word], :] = word_2_vec[word.lower()]
-        else:
-            embeddings[vocab[word], :] = np.random.normal(0, 0.5, (1, 300))
-            i += 1
-    print(i)
-
+        embeddings[vocab[word], :] = word_2_vec[word]
     return embeddings
 
 
