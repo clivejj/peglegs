@@ -4,16 +4,12 @@ import numpy as np
 import gensim.downloader as gd
 from os import path
 import pickle
-import nltk
-from nltk.corpus import wordnet as wn
-import string
 from ekphrasis.classes.segmenter import Segmenter
 from ekphrasis.classes.tokenizer import SocialTokenizer
+import gensim
 
 
 seg = Segmenter(corpus="twitter")
-
-nltk.download("wordnet")
 
 text_processor = TextPreProcessor(
     normalize=["url", "number", "user"],
@@ -85,7 +81,7 @@ def preprocess(sentimentFile, emotionFile, word_2_vec):
     return (vocab, sentences, sentiment_labels, emotion_labels)
 
 
-def expand_vocab(vocab, word_2_vec):
+def expand_vocab(vocab, word_2_vec, embeddings):
     corpus = list(vocab.keys())
     synonyms_indices = {}
     len_corpus = len(vocab)
@@ -98,7 +94,9 @@ def expand_vocab(vocab, word_2_vec):
             old = np.floor(q * 100 / len_corpus)
 
         synonyms_indices[vocab[word]] = []
-        synonyms = [x[0] for x in word_2_vec.most_similar(positive=[word], topn=4)]
+        synonyms = [
+            x[0] for x in word_2_vec.similar_by_vector(embeddings[vocab[word]], topn=4)
+        ]
         for synonym in synonyms:
             if synonym in vocab:
                 synonyms_indices[vocab[word]] += [vocab[synonym]]
@@ -117,12 +115,12 @@ def create_embeddings(vocab, word_2_vec):
     return embeddings
 
 
-def get_vec():
-    targetFile = "data/word2vec.pickle"
+def get_vec(limit=None):
+    targetFile = "./data/word2vec-google-news-300/word2vec-google-news-300.gz"
     if not path.exists(targetFile):
-        word_2_vec = gd.load("word2vec-google-news-300")
-        pickle.dump(word_2_vec, open(targetFile, "wb"))
-    else:
-        word_2_vec = pickle.load(open(targetFile, "rb"))
-    return word_2_vec
+        gensim.downloader.BASE_DIR = "./data"
+        gensim.downloader.load("word2vec-google-news-300")
+    return gensim.models.KeyedVectors.load_word2vec_format(
+        targetFile, binary=True, limit=limit
+    )
 
