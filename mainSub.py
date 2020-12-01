@@ -1,4 +1,3 @@
-
 from preprocessing import preprocess, expand_vocab, create_embeddings, get_vec
 import gensim
 import pickle
@@ -26,6 +25,6 @@ word_2_vec = get_vec(10 ** 6)
 
 embeddings = create_embeddings(vocab, word_2_vec)
 
-data = [vocab, sentences, embeddings, synonym_indices, sentiment_labels, emotion_labels]
+data = (vocab, sentences, embeddings, synonym_indices, sentiment_labels, emotion_labels)
 
-pickle.dump(data, open("data.pickle", "wb"))
+pickle.dump(data, open("data/data.pickle", "wb"))
