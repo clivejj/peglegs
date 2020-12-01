@@ -5,5 +5,5 @@ a = pickle.load(open("data.pickle", "rb"))
 
 # print shape of each sentence embedding
 for s in a[1]:
-    print(np.shape(a[2][s, :]))
+    print(np.shape(a[2][s]))
 

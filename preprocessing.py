@@ -124,3 +124,8 @@ def get_vec(limit=None):
         targetFile, binary=True, limit=limit
     )
 
+def unpickle(file):
+    with open(file, 'rb') as fo:
+        dict = pickle.load(fo, encoding='bytes')
+    return dict
+
