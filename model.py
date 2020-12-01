@@ -13,43 +13,30 @@ class Model(tf.keras.Model):
         self.batch_size = 64
         # Trainable parameters
         self.biLSTM = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=self.h1, return_sequences=True), dtype=np.float32
+            tf.keras.layers.LSTM(units=int(self.h1 / 2), return_sequences=True),
+            dtype=np.float32,
         )
-        self.primary_attention_layer = tf.keras.layers.Dense(self.h1)
+        self.primary_attention_dense_layer = tf.keras.layers.Dense(self.h1)
+        self.secondary_attention_dense_layer = tf.keras.layers.Dense(
+            1, activation="tanh"
+        )
         self.emotion_output_layer = tf.keras.layers.Dense(units=8, activation="sigmoid")
         self.sentiment_output_layer = tf.keras.layers.Dense(
             units=2, activation="sigmoid"
         )
 
     def call(self, batch_inputs, embedding_matrix, synonym_indices):
-
         for sentance in batch_inputs:
             # get embedding from word2vec embedding layer
             embeddings = tf.nn.embedding_lookup(embedding_matrix, sentance)
             hidden_states = tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0)))
-            a = self.primary_attention_layer(hidden_states)
-            print(tf.shape(a))
-            "CONTINUE HERE"
+            h_hats = self.primary_attention(
+                sentance, hidden_states, embedding_matrix, synonym_indices
+            )
+            H_HAT = self.secondary_attention(h_hats)
+            print("KEEP IMPlEMENTING AFTER HERE")
             return
 
-            """for index, word in enumerate(sentance):
-                synonym_embeddings = tf.nn.embedding_lookup(
-                    embedding_matrix, synonym_indices[word]
-                )
-                print(hidden_states[:, index, :])
-                print(self.primary_attention_layer(hidden_states[:, index, :]))
-                print(synonym_embeddings)
-                return
-                coefficients = tf.tensordot(
-                    self.primary_attention_layer(synonym_embeddings),
-                    synonym_embeddings,
-                    0,
-                )
-                print(tf.shape(coefficients))
-
-                return
-
-            return"""
         """
 		TODO: Pass in hidden state output of biLSTM layer into primary attention layer for emotion
 		and for sentiment primary attention layers
@@ -60,7 +47,7 @@ class Model(tf.keras.Model):
 		Add in dropout!
 		"""
 
-        h_bar = primary_attention((final_memory_output, final_carry_output))
+        """h_bar = primary_attention((final_memory_output, final_carry_output))
 
         h_cap = primary_attention((final_memory_output, final_carry_output))
 
@@ -72,9 +59,11 @@ class Model(tf.keras.Model):
 
         sentiment_logits = tf.nn.softmax(self.sentiment_output_layer(H_cap))
 
-        return emotion_logits, sentiment_logits
+        return emotion_logits, sentiment_logits"""
 
-    def primary_attention(self, hidden_state):
+    def primary_attention(
+        self, sentance, hidden_states, embedding_matrix, synonym_indices
+    ):
         """
 		TODO: 
 		for each of the 4 synonyms of a word (retrieved using wn.synset),
@@ -84,9 +73,20 @@ class Model(tf.keras.Model):
 		Then, calculate m for the word by summing this up, and then create h by concatenating the
 		hidden state for the word and m
 		"""
-        pass
+        h_hats = np.zeros((len(sentance), 300))
+        out = self.primary_attention_dense_layer(hidden_states)
+        for index, word in enumerate(sentance):
+            synonym_embeddings = tf.nn.embedding_lookup(
+                embedding_matrix, synonym_indices[word]
+            )
+            out_temp = tf.expand_dims(out[index, :], 1)
+            coefficients = tf.math.exp(tf.matmul(synonym_embeddings, out_temp))
+            m = tf.reduce_sum(coefficients * synonym_embeddings, 0)
+            h_hat = m + hidden_states[index, :]
+            h_hats[index, :] = h_hat
+        return tf.convert_to_tensor(h_hats, dtype=np.float32)
 
-    def secondary_attention(self, primary_attention_output):
+    def secondary_attention(self, h_hats):
         """
 		TODO:
 		for each of the words in a sentence,
@@ -96,7 +96,8 @@ class Model(tf.keras.Model):
 		Then, calculate m for the word by summing this up, and then create h by concatenating the
 		hidden state for the word and m
 		"""
-        pass
+        coefficients = tf.math.exp(self.secondary_attention_dense_layer(h_hats))
+        return tf.reduce_sum(coefficients * h_hats, 0)
 
     def loss_function(self, labels, logits):
         # Calculate the sum of the loss by comparing the labels with the inputted logits
