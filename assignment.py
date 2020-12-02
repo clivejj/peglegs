@@ -11,61 +11,60 @@ def train(
 
     for batch_num in range(int(len(train_inputs) / model.batch_size)):
 
+        print("Batch Number", batch_num)
         batch_inputs, batch_emotion_labels, batch_sentiment_labels = get_batch(
             train_inputs, emotion_labels, sentiment_labels, batch_num, model.batch_size
         )
 
         with tf.GradientTape() as tape:
-            emotion_logits, sentiment_logits = model.call(
-                batch_inputs, embeddings, synonym_indices
-            )
-
             emotion_batch_loss = 0
             sentiment_batch_loss = 0
 
-    # for batch_num in range(int(train_inputs.shape[0]/model.batch_size)):
-    #     batch_inputs, batch_emotion_labels, batch_sentiment_labels = get_batch(train_inputs,
-    #         emotion_labels, sentiment_labels, batch_num, model.batch_size)
+            for index, tweet in enumerate(batch_inputs):
+                emotion_logits, sentiment_logit = model.call(
+                        tweet, embeddings, synonym_indices
+                    )
+                emotion_batch_loss += model.loss_function(tf.expand_dims(np.array(batch_emotion_labels[index]), 0),
+                 emotion_logits)
+                sentiment_batch_loss += model.loss_function(tf.expand_dims(np.array(batch_sentiment_labels[index]), 0),
+                sentiment_logit)
 
-    #     with tf.GradientTape() as tape:
-    #         emotion_logits, sentiment_logits = model.call(batch_inputs, None)
-    #         emotion_batch_loss = model.loss_function(emotion_logits, batch_emotion_labels)
-    #         sentiment_batch_loss = model.loss_function(sentiment_logits, batch_sentiment_labels)
-    #         batch_loss = emotion_batch_loss + sentiment_batch_loss
-
-    #         gradients = tape.gradient(batch_loss, model.trainable_parameters)
-    #         model.optimizer.apply_gradients(zip(gradients, model.trainable_parameters))
-
-    #         pass
+            batch_loss = emotion_batch_loss + sentiment_batch_loss
+            print("Batch Loss", batch_loss)
+            gradients = tape.gradient(batch_loss, model.trainable_variables)
+            model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
-'''def test(model, test_inputs, emotion_labels, sentiment_labels):
+def test(model, test_inputs, emotion_labels, sentiment_labels, embeddings, synonym_indices):
+    emotionF1 = 0
+    emotionRecall = 0
+    sentimentF1 = 0
+    sentimentPrecision = 0
 
-    test_inputs = np.array(test_inputs)
-    emotion_labels = np.array(emotion_labels)
-    sentiment_labels = np.array(sentiment_labels)
-
-    loss = tf.Variable([0], dtype=tf.float32)
-
-    for batch_num in range(int(train_inputs.shape[0] / model.batch_size)):
-        batch_inputs, batch_emotion_labels, batch_sentiment_labels = get_batch(
-            test_inputs, emotion_labels, sentiment_labels, batch_num, model.batch_size
-        )
+    for index, tweet in enumerate(test_inputs):
         emotion_logits, sentiment_logits = model.call(batch_inputs, None)
-        emotion_batch_loss = model.loss_function(emotion_logits, batch_emotion_labels)
-        sentiment_batch_loss = model.loss_function(
-            sentiment_logits, batch_sentiment_labels
-        )
-        loss = loss + batch_loss
+        
+        eRecall = tf.compat.v1.metrics.recall(emotion_labels[index], emotion_logits)
+        ePrecision = tf.compat.v1.metrics.precision(emotion_labels[index], emotion_logits)
 
-    pass
-    """
-    Calculate F1 score for emotion and sentiment, probably using tfa.metrics.F1Score
-    and then print each
+        emotionF1 += 2*(eRecall * ePrecision) / (eRecall + ePrecision)
+        emotionRecall += eRecall
 
-    Maybe make use of some visualization tool?
+        sRecall = tf.compat.v1.metrics.recall(sentiment_labels[index], sentiment_logit)
+        sPrecision = tf.compat.v1.metrics.recall(sentiment_labels[index], sentiment_logit)
 
-    """'''
+        sentimentF1 += 2*(sRecall * sPrecision) / (sRecall + sPrecision)
+        sentimentPrecision += sPrecision
+
+
+    average_emotion_F1 = (emotionF1 / len(test_inputs))
+    print("Average Emotion F1", average_emotion_F1)
+    average_emotion_Recall = (emotionRecall / len(test_inputs))
+    print("Average Emotion Recall", average_emotion_Recall)
+    average_sentiment_F1 = (sentimentF1 / len(test_inputs))
+    print("Average Sentiment F1", average_sentiment_F1)
+    average_sentiment_Precision = (sentimentPrecision / len(test_inputs))
+    print("Average Sentiment Precision", average_sentiment_Precision)
 
 
 def main():

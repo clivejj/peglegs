@@ -12,57 +12,48 @@ class Model(tf.keras.Model):
         self.h1 = 300
         self.batch_size = 64
         # Trainable parameters
-        self.biLSTM = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(units=int(self.h1 / 2), return_sequences=True),
-            dtype=np.float32,
-        )
+
+        self.biLSTM = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=int(self.h1/2), return_sequences=True))
         self.primary_attention_dense_layer = tf.keras.layers.Dense(self.h1)
         self.secondary_attention_dense_layer = tf.keras.layers.Dense(
             1, activation="tanh"
         )
         self.emotion_output_layer = tf.keras.layers.Dense(units=8, activation="sigmoid")
         self.sentiment_output_layer = tf.keras.layers.Dense(
-            units=2, activation="sigmoid"
+            units=1, activation="sigmoid"
         )
 
-    def call(self, batch_inputs, embedding_matrix, synonym_indices):
-        for sentance in batch_inputs:
-            # get embedding from word2vec embedding layer
-            embeddings = tf.nn.embedding_lookup(embedding_matrix, sentance)
-            hidden_states = tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0)))
-            h_hats = self.primary_attention(
-                sentance, hidden_states, embedding_matrix, synonym_indices
-            )
-            H_HAT = self.secondary_attention(h_hats)
-            print("KEEP IMPlEMENTING AFTER HERE")
-            return
+    def call(self, sentence, embedding_matrix, synonym_indices):
+        
+        embeddings = tf.nn.embedding_lookup(embedding_matrix, sentence)
+        # print("Embeddings Shape", np.shape(embeddings))
+        hidden_states = tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0)))
+        # print("Hidden states shape", np.shape(hidden_states))
+        h_hats = self.primary_attention(
+            sentence, hidden_states, embedding_matrix, synonym_indices
+        )
+        # print("h_hats Shape post call", np.shape(h_hats))
 
-        """
-		TODO: Pass in hidden state output of biLSTM layer into primary attention layer for emotion
-		and for sentiment primary attention layers
+        h_bars = h_hats
 
-		Then, pass in the output of each of these, which will be h bar and h cap respectively,
-		into their respective secondary attention layers to get H bar and H cap respective
+        H_HAT = tf.expand_dims(self.secondary_attention(h_hats), 0)
 
-		Add in dropout!
-		"""
+        H_BAR = H_HAT
+        # print("H_HAT Shape", np.shape(H_HAT))
+            
+        emotion_logits = self.emotion_output_layer(H_BAR)
+        # print("Emotion Logits Shape", np.shape(emotion_logits))
+        emotion_logits = tf.convert_to_tensor(np.where(emotion_logits > .5, 1, 0), dtype=tf.float64)
+        # print("Emotion Logits", emotion_logits)
 
-        """h_bar = primary_attention((final_memory_output, final_carry_output))
+        sentiment_logit = self.sentiment_output_layer(H_HAT)
+        sentiment_logit = tf.convert_to_tensor(np.where(sentiment_logit > .5, 1, -1), dtype=tf.float64)
 
-        h_cap = primary_attention((final_memory_output, final_carry_output))
-
-        H_bar = secondary_attention(h_bar)
-
-        H_cap = secondary_attention(h_cap)
-
-        emotion_logits = tf.nn.softmax(self.emotion_output_layer(H_bar))
-
-        sentiment_logits = tf.nn.softmax(self.sentiment_output_layer(H_cap))
-
-        return emotion_logits, sentiment_logits"""
+        return emotion_logits, sentiment_logit
+    
 
     def primary_attention(
-        self, sentance, hidden_states, embedding_matrix, synonym_indices
+        self, sentence, hidden_states, embedding_matrix, synonym_indices
     ):
         """
 		TODO: 
@@ -73,18 +64,24 @@ class Model(tf.keras.Model):
 		Then, calculate m for the word by summing this up, and then create h by concatenating the
 		hidden state for the word and m
 		"""
-        h_hats = np.zeros((len(sentance), 300))
+
+        hs = np.zeros((len(sentence), self.embedding_size))
+        # print("h Shape", np.shape(hs))
         out = self.primary_attention_dense_layer(hidden_states)
-        for index, word in enumerate(sentance):
+        # print("Out Shape", np.shape(out))
+        for index, word in enumerate(sentence):
             synonym_embeddings = tf.nn.embedding_lookup(
                 embedding_matrix, synonym_indices[word]
             )
+            # print("Synonym Embeddings Shape", np.shape(synonym_embeddings))
             out_temp = tf.expand_dims(out[index, :], 1)
+            # print("Out_Temp Shape", np.shape(out_temp))
             coefficients = tf.math.exp(tf.matmul(synonym_embeddings, out_temp))
             m = tf.reduce_sum(coefficients * synonym_embeddings, 0)
-            h_hat = m + hidden_states[index, :]
-            h_hats[index, :] = h_hat
-        return tf.convert_to_tensor(h_hats, dtype=np.float32)
+            h = m + hidden_states[index, :]
+            # print("h_hat Shape", np.shape(h))
+            hs[index, :] = h
+        return tf.convert_to_tensor(hs, dtype=np.float32)
 
     def secondary_attention(self, h_hats):
         """
@@ -101,5 +98,7 @@ class Model(tf.keras.Model):
 
     def loss_function(self, labels, logits):
         # Calculate the sum of the loss by comparing the labels with the inputted logits
-        return tf.sum(tf.nn.sigmoid_cross_entropy_with_logits(labels, logits))
+        print("Labels Type", labels)
+        print("Logits Type", logits)
+        return tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels, logits))
 
