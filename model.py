@@ -27,7 +27,7 @@ class Model(tf.keras.Model):
         
         embeddings = tf.nn.embedding_lookup(embedding_matrix, sentence)
         # print("Embeddings Shape", np.shape(embeddings))
-        hidden_states = tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0)))
+        hidden_states = tf.cast(tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0))), tf.float32)
         # print("Hidden states shape", np.shape(hidden_states))
         h_hats = self.primary_attention(
             sentence, hidden_states, embedding_matrix, synonym_indices
@@ -43,11 +43,11 @@ class Model(tf.keras.Model):
             
         emotion_logits = self.emotion_output_layer(H_BAR)
         # print("Emotion Logits Shape", np.shape(emotion_logits))
-        emotion_logits = tf.convert_to_tensor(np.where(emotion_logits > .5, 1, 0), dtype=tf.float64)
+        emotion_logits = tf.convert_to_tensor(tf.where(emotion_logits > .5, 1.0, 0.0), tf.float32)
         # print("Emotion Logits", emotion_logits)
 
         sentiment_logit = self.sentiment_output_layer(H_HAT)
-        sentiment_logit = tf.convert_to_tensor(np.where(sentiment_logit > .5, 1, -1), dtype=tf.float64)
+        sentiment_logit = tf.convert_to_tensor(tf.where(sentiment_logit > .5, 1.0, -1.0), tf.float32)
 
         return emotion_logits, sentiment_logit
     
@@ -70,14 +70,14 @@ class Model(tf.keras.Model):
         out = self.primary_attention_dense_layer(hidden_states)
         # print("Out Shape", np.shape(out))
         for index, word in enumerate(sentence):
-            synonym_embeddings = tf.nn.embedding_lookup(
+            synonym_embeddings = tf.cast(tf.nn.embedding_lookup(
                 embedding_matrix, synonym_indices[word]
-            )
+            ), tf.float32)
             # print("Synonym Embeddings Shape", np.shape(synonym_embeddings))
-            out_temp = tf.expand_dims(out[index, :], 1)
+            out_temp = tf.cast(tf.expand_dims(out[index, :], 1), tf.float32)
             # print("Out_Temp Shape", np.shape(out_temp))
             coefficients = tf.math.exp(tf.matmul(synonym_embeddings, out_temp))
-            m = tf.reduce_sum(coefficients * synonym_embeddings, 0)
+            m = tf.cast(tf.reduce_sum(coefficients * synonym_embeddings, 0), tf.float32)
             h = m + hidden_states[index, :]
             # print("h_hat Shape", np.shape(h))
             hs[index, :] = h

@@ -24,9 +24,9 @@ def train(
                 emotion_logits, sentiment_logit = model.call(
                         tweet, embeddings, synonym_indices
                     )
-                emotion_batch_loss += model.loss_function(tf.expand_dims(np.array(batch_emotion_labels[index]), 0),
+                emotion_batch_loss += model.loss_function(tf.expand_dims(tf.convert_to_tensor(batch_emotion_labels[index], tf.float32), 0),
                  emotion_logits)
-                sentiment_batch_loss += model.loss_function(tf.expand_dims(np.array(batch_sentiment_labels[index]), 0),
+                sentiment_batch_loss += model.loss_function(tf.expand_dims(tf.convert_to_tensor(batch_sentiment_labels[index], tf.float32), 0),
                 sentiment_logit)
 
             batch_loss = emotion_batch_loss + sentiment_batch_loss
@@ -76,16 +76,17 @@ def main():
     sentences = data[1]
     # print("Sentences", len(sentences))
     # An embedding matrix that maps each word to a 300 Dimensional Embedding
-    embeddings = tf.cast(data[2], np.float32)
+    embeddings = tf.convert_to_tensor(data[2], tf.float32)
     # A dictionary that maps the index of a word to a list containing the indices of its 4 synonyms
     synonym_indices = data[3]
+
     # A list of sentiment labels corresponding to tweets; labels can be -1 (negative), 0 (objective), or (1) positive
     # (2914, 1)
-    sentiment_labels = data[4]
+    sentiment_labels = tf.convert_to_tensor(data[4], tf.float32)
     # A list of emotion labels corresponding to tweets; each label has 8 slots, where a 1 in that position corresponds to that
     # emotion being labelled. So, each tweet can be associated to several different emotions
     # Shape (2914, 8)
-    emotion_labels = data[5]
+    emotion_labels = tf.convert_to_tensor(data[5], tf.float32)
 
     """
     Splits the data into training and testing portions, as determined by the test_fraction parameter
