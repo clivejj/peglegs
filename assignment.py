@@ -22,12 +22,21 @@ def train(
 
             for index, tweet in enumerate(batch_inputs):
                 emotion_logits, sentiment_logit = model.call(
-                        tweet, embeddings, synonym_indices
-                    )
-                emotion_batch_loss += model.loss_function(tf.expand_dims(tf.convert_to_tensor(batch_emotion_labels[index], tf.float32), 0),
-                 emotion_logits)
-                sentiment_batch_loss += model.loss_function(tf.expand_dims(tf.convert_to_tensor(batch_sentiment_labels[index], tf.float32), 0),
-                sentiment_logit)
+                    tweet, embeddings, synonym_indices
+                )
+                emotion_batch_loss += model.loss_function(
+                    tf.expand_dims(
+                        tf.convert_to_tensor(batch_emotion_labels[index], tf.float32), 0
+                    ),
+                    emotion_logits,
+                )
+                sentiment_batch_loss += model.loss_function(
+                    tf.expand_dims(
+                        tf.convert_to_tensor(batch_sentiment_labels[index], tf.float32),
+                        0,
+                    ),
+                    sentiment_logit,
+                )
 
             batch_loss = emotion_batch_loss + sentiment_batch_loss
             print("Batch Loss", batch_loss)
@@ -35,7 +44,9 @@ def train(
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
-def test(model, test_inputs, emotion_labels, sentiment_labels, embeddings, synonym_indices):
+def test(
+    model, test_inputs, emotion_labels, sentiment_labels, embeddings, synonym_indices
+):
     emotionF1 = 0
     emotionRecall = 0
     sentimentF1 = 0
@@ -43,27 +54,30 @@ def test(model, test_inputs, emotion_labels, sentiment_labels, embeddings, synon
 
     for index, tweet in enumerate(test_inputs):
         emotion_logits, sentiment_logits = model.call(batch_inputs, None)
-        
-        eRecall = tf.compat.v1.metrics.recall(emotion_labels[index], emotion_logits)
-        ePrecision = tf.compat.v1.metrics.precision(emotion_labels[index], emotion_logits)
 
-        emotionF1 += 2*(eRecall * ePrecision) / (eRecall + ePrecision)
+        eRecall = tf.compat.v1.metrics.recall(emotion_labels[index], emotion_logits)
+        ePrecision = tf.compat.v1.metrics.precision(
+            emotion_labels[index], emotion_logits
+        )
+
+        emotionF1 += 2 * (eRecall * ePrecision) / (eRecall + ePrecision)
         emotionRecall += eRecall
 
         sRecall = tf.compat.v1.metrics.recall(sentiment_labels[index], sentiment_logit)
-        sPrecision = tf.compat.v1.metrics.recall(sentiment_labels[index], sentiment_logit)
+        sPrecision = tf.compat.v1.metrics.recall(
+            sentiment_labels[index], sentiment_logit
+        )
 
-        sentimentF1 += 2*(sRecall * sPrecision) / (sRecall + sPrecision)
+        sentimentF1 += 2 * (sRecall * sPrecision) / (sRecall + sPrecision)
         sentimentPrecision += sPrecision
 
-
-    average_emotion_F1 = (emotionF1 / len(test_inputs))
+    average_emotion_F1 = emotionF1 / len(test_inputs)
     print("Average Emotion F1", average_emotion_F1)
-    average_emotion_Recall = (emotionRecall / len(test_inputs))
+    average_emotion_Recall = emotionRecall / len(test_inputs)
     print("Average Emotion Recall", average_emotion_Recall)
-    average_sentiment_F1 = (sentimentF1 / len(test_inputs))
+    average_sentiment_F1 = sentimentF1 / len(test_inputs)
     print("Average Sentiment F1", average_sentiment_F1)
-    average_sentiment_Precision = (sentimentPrecision / len(test_inputs))
+    average_sentiment_Precision = sentimentPrecision / len(test_inputs)
     print("Average Sentiment Precision", average_sentiment_Precision)
 
 
@@ -78,7 +92,7 @@ def main():
     # An embedding matrix that maps each word to a 300 Dimensional Embedding
     embeddings = tf.convert_to_tensor(data[2], tf.float32)
     # A dictionary that maps the index of a word to a list containing the indices of its 4 synonyms
-    synonym_indices = data[3]
+    synonym_indices = tf.convert_to_tensor(data[3], tf.int32)
 
     # A list of sentiment labels corresponding to tweets; labels can be -1 (negative), 0 (objective), or (1) positive
     # (2914, 1)

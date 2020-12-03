@@ -13,7 +13,9 @@ class Model(tf.keras.Model):
         self.batch_size = 64
         # Trainable parameters
 
-        self.biLSTM = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=int(self.h1/2), return_sequences=True))
+        self.biLSTM = tf.keras.layers.Bidirectional(
+            tf.keras.layers.LSTM(units=int(self.h1 / 2), return_sequences=True)
+        )
         self.primary_attention_dense_layer = tf.keras.layers.Dense(self.h1)
         self.secondary_attention_dense_layer = tf.keras.layers.Dense(
             1, activation="tanh"
@@ -24,10 +26,12 @@ class Model(tf.keras.Model):
         )
 
     def call(self, sentence, embedding_matrix, synonym_indices):
-        
+
         embeddings = tf.nn.embedding_lookup(embedding_matrix, sentence)
         # print("Embeddings Shape", np.shape(embeddings))
-        hidden_states = tf.cast(tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0))), tf.float32)
+        hidden_states = tf.cast(
+            tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0))), tf.float32
+        )
         # print("Hidden states shape", np.shape(hidden_states))
         h_hats = self.primary_attention(
             sentence, hidden_states, embedding_matrix, synonym_indices
@@ -40,17 +44,16 @@ class Model(tf.keras.Model):
 
         H_BAR = H_HAT
         # print("H_HAT Shape", np.shape(H_HAT))
-            
+
         emotion_logits = self.emotion_output_layer(H_BAR)
         # print("Emotion Logits Shape", np.shape(emotion_logits))
-        emotion_logits = tf.convert_to_tensor(tf.where(emotion_logits > .5, 1.0, 0.0), tf.float32)
+        # emotion_logits = tf.convert_to_tensor(tf.where(emotion_logits > .5, 1.0, 0.0), tf.float32)
         # print("Emotion Logits", emotion_logits)
 
         sentiment_logit = self.sentiment_output_layer(H_HAT)
-        sentiment_logit = tf.convert_to_tensor(tf.where(sentiment_logit > .5, 1.0, -1.0), tf.float32)
+        # sentiment_logit = tf.convert_to_tensor(tf.where(sentiment_logit > .5, 1.0, -1.0), tf.float32)
 
         return emotion_logits, sentiment_logit
-    
 
     def primary_attention(
         self, sentence, hidden_states, embedding_matrix, synonym_indices
@@ -70,9 +73,10 @@ class Model(tf.keras.Model):
         out = self.primary_attention_dense_layer(hidden_states)
         # print("Out Shape", np.shape(out))
         for index, word in enumerate(sentence):
-            synonym_embeddings = tf.cast(tf.nn.embedding_lookup(
-                embedding_matrix, synonym_indices[word]
-            ), tf.float32)
+            synonym_embeddings = tf.cast(
+                tf.nn.embedding_lookup(embedding_matrix, synonym_indices[word]),
+                tf.float32,
+            )
             # print("Synonym Embeddings Shape", np.shape(synonym_embeddings))
             out_temp = tf.cast(tf.expand_dims(out[index, :], 1), tf.float32)
             # print("Out_Temp Shape", np.shape(out_temp))
@@ -98,7 +102,7 @@ class Model(tf.keras.Model):
 
     def loss_function(self, labels, logits):
         # Calculate the sum of the loss by comparing the labels with the inputted logits
-        print("Labels Type", labels)
-        print("Logits Type", logits)
+        # print("Labels Type", labels)
+        # print("Logits Type", logits)
         return tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels, logits))
 

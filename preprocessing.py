@@ -81,31 +81,31 @@ def preprocess(sentimentFile, emotionFile, word_2_vec):
     return (vocab, sentences, sentiment_labels, emotion_labels)
 
 
-def expand_vocab(vocab, word_2_vec, embeddings):
+def expand_vocab(vocab, word_2_vec, embeddings, display_progress=True):
     corpus = list(vocab.keys())
-    synonyms_indices = {}
     len_corpus = len(vocab)
-    q = 0
-    old = 0
+    synonym_indices = np.zeros((len_corpus, 4))
+    if display_progress:
+        percent_progress = -1
     i = len(vocab)
-    for word in corpus:
-        if np.floor(q * 100 / len_corpus) != old:
-            print(old)
-            old = np.floor(q * 100 / len_corpus)
-
-        synonyms_indices[vocab[word]] = []
+    for index, word in enumerate(corpus):
+        if display_progress:
+            if np.floor(index * 100 / len_corpus) != percent_progress:
+                percent_progress = np.floor(index * 100 / len_corpus)
+                print("approx %%%d complete" % percent_progress)
         synonyms = [
             x[0] for x in word_2_vec.similar_by_vector(embeddings[vocab[word]], topn=4)
         ]
+        indices = []
         for synonym in synonyms:
             if synonym in vocab:
-                synonyms_indices[vocab[word]] += [vocab[synonym]]
+                indices += [vocab[synonym]]
             else:
                 vocab[synonym] = i
-                synonyms_indices[vocab[word]] += [i]
+                indices += [i]
                 i += 1
-        q += 1
-    return synonyms_indices
+        synonym_indices[index, :] = np.asarray(indices, dtype=np.int32)
+    return synonym_indices
 
 
 def create_embeddings(vocab, word_2_vec):

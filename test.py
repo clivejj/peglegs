@@ -1,9 +1,10 @@
 import pickle
 import numpy as np
 
-a = pickle.load(open("data/data.pickle", "rb"))
+na = np.zeros((10, 4))
 
-# print shape of each sentence embedding
-for s in a[1]:
-    print(np.shape(a[2][s]))
+q = [1, 2, 3, 4]
 
+na[1, :] = np.asarray(q)
+
+print(na[1])
