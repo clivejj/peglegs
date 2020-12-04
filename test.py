@@ -1,10 +1,10 @@
 import pickle
 import numpy as np
+import tensorflow as tf
 
-na = np.zeros((10, 4))
+h = np.zeros((4, 1))
+t = np.ones((4, 1))
 
-q = [1, 2, 3, 4]
+b = tf.concat([tf.transpose(h), tf.transpose], 0)
 
-na[1, :] = np.asarray(q)
-
-print(na[1])
+print(b)

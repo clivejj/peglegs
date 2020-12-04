@@ -20,18 +20,15 @@ class Model(tf.keras.Model):
         self.secondary_attention_dense_layer = tf.keras.layers.Dense(
             1, activation="tanh"
         )
-        self.emotion_output_layer = tf.keras.layers.Dense(units=8, activation="sigmoid")
-        self.sentiment_output_layer = tf.keras.layers.Dense(
-            units=1, activation="sigmoid"
-        )
+        self.emotion_output_layer = tf.keras.layers.Dense(units=8)
+        self.sentiment_output_layer = tf.keras.layers.Dense(units=1)
 
     def call(self, sentence, embedding_matrix, synonym_indices):
 
         embeddings = tf.nn.embedding_lookup(embedding_matrix, sentence)
         # print("Embeddings Shape", np.shape(embeddings))
-        hidden_states = tf.cast(
-            tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0))), tf.float32
-        )
+        hidden_states = tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0)))
+        # print(hidden_states)
         # print("Hidden states shape", np.shape(hidden_states))
         h_hats = self.primary_attention(
             sentence, hidden_states, embedding_matrix, synonym_indices
@@ -50,10 +47,11 @@ class Model(tf.keras.Model):
         # emotion_logits = tf.convert_to_tensor(tf.where(emotion_logits > .5, 1.0, 0.0), tf.float32)
         # print("Emotion Logits", emotion_logits)
 
-        sentiment_logit = self.sentiment_output_layer(H_HAT)
+        sentiment_logits = self.sentiment_output_layer(H_HAT)
         # sentiment_logit = tf.convert_to_tensor(tf.where(sentiment_logit > .5, 1.0, -1.0), tf.float32)
 
-        return emotion_logits, sentiment_logit
+        # return emotion_logits, sentiment_logit
+        return emotion_logits, sentiment_logits
 
     def primary_attention(
         self, sentence, hidden_states, embedding_matrix, synonym_indices
@@ -68,24 +66,37 @@ class Model(tf.keras.Model):
 		hidden state for the word and m
 		"""
 
-        hs = np.zeros((len(sentence), self.embedding_size))
-        # print("h Shape", np.shape(hs))
+        # construct first row of hs matrix
         out = self.primary_attention_dense_layer(hidden_states)
-        # print("Out Shape", np.shape(out))
-        for index, word in enumerate(sentence):
-            synonym_embeddings = tf.cast(
-                tf.nn.embedding_lookup(embedding_matrix, synonym_indices[word]),
-                tf.float32,
+        word = tf.gather(sentence, 0)
+        index = 0
+        synonym_embeddings = tf.nn.embedding_lookup(
+            embedding_matrix, tf.gather(synonym_indices, word)
+        )
+        out_temp = tf.expand_dims(out[index, :], 1)
+        coefficients = tf.math.exp(tf.matmul(synonym_embeddings, out_temp))
+        m = tf.reduce_sum(coefficients * synonym_embeddings, 0)
+        h = tf.reshape(m + hidden_states[index, :], (1, -1))
+
+        hs = h
+
+        for index, word in enumerate(sentence[1:]):
+            synonym_embeddings = tf.nn.embedding_lookup(
+                embedding_matrix, tf.gather(synonym_indices, word)
             )
             # print("Synonym Embeddings Shape", np.shape(synonym_embeddings))
-            out_temp = tf.cast(tf.expand_dims(out[index, :], 1), tf.float32)
+            out_temp = tf.expand_dims(out[index, :], 1)
             # print("Out_Temp Shape", np.shape(out_temp))
             coefficients = tf.math.exp(tf.matmul(synonym_embeddings, out_temp))
-            m = tf.cast(tf.reduce_sum(coefficients * synonym_embeddings, 0), tf.float32)
-            h = m + hidden_states[index, :]
+            m = tf.reduce_sum(coefficients * synonym_embeddings, 0)
+            h = tf.reshape(m + hidden_states[index, :], (1, -1))
             # print("h_hat Shape", np.shape(h))
-            hs[index, :] = h
-        return tf.convert_to_tensor(hs, dtype=np.float32)
+            # print(h)
+            hs = tf.concat([hs, h], 0)
+            # hs[index, :] = h
+        # return tf.zeros((17, 300))
+        # return tf.convert_to_tensor(hs, tf.float32)
+        return hs
 
     def secondary_attention(self, h_hats):
         """
@@ -104,5 +115,6 @@ class Model(tf.keras.Model):
         # Calculate the sum of the loss by comparing the labels with the inputted logits
         # print("Labels Type", labels)
         # print("Logits Type", logits)
+        # return tf.convert_to_tensor(6.3)
         return tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels, logits))
 

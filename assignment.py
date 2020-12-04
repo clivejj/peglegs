@@ -19,29 +19,35 @@ def train(
         with tf.GradientTape() as tape:
             emotion_batch_loss = 0
             sentiment_batch_loss = 0
+            # acc = []
 
             for index, tweet in enumerate(batch_inputs):
                 emotion_logits, sentiment_logit = model.call(
                     tweet, embeddings, synonym_indices
                 )
                 emotion_batch_loss += model.loss_function(
-                    tf.expand_dims(
-                        tf.convert_to_tensor(batch_emotion_labels[index], tf.float32), 0
-                    ),
-                    emotion_logits,
+                    tf.expand_dims(batch_emotion_labels[index], 0), emotion_logits,
                 )
                 sentiment_batch_loss += model.loss_function(
-                    tf.expand_dims(
-                        tf.convert_to_tensor(batch_sentiment_labels[index], tf.float32),
-                        0,
-                    ),
-                    sentiment_logit,
+                    tf.expand_dims(batch_sentiment_labels[index], 0,), sentiment_logit,
                 )
-
+                # acc += [sentiment_logit]
             batch_loss = emotion_batch_loss + sentiment_batch_loss
-            print("Batch Loss", batch_loss)
-            gradients = tape.gradient(batch_loss, model.trainable_variables)
-            model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+        """acc = np.squeeze(
+            tf.cast(tf.math.sigmoid(tf.convert_to_tensor(acc)) > 0.5, np.float32), 2
+        )
+        print(tf.cast(batch_sentiment_labels, np.int32))
+        print(acc)"""
+        print(batch_loss)
+        # batch_loss = emotion_batch_loss + sentiment_batch_loss
+        """print(sentiment_logit)
+        print(emotion_logits)
+        print(batch_sentiment_labels)
+        print(accuracy)"""
+
+        gradients = tape.gradient(batch_loss, model.trainable_variables)
+        model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
 def test(
@@ -88,6 +94,8 @@ def main():
     vocab = data[0]
     # A list of the tweets that we will be training on (2914 tweets)
     sentences = data[1]
+    for i in range(len(sentences)):
+        sentences[i] = tf.convert_to_tensor(sentences[i], tf.int32)
     # print("Sentences", len(sentences))
     # An embedding matrix that maps each word to a 300 Dimensional Embedding
     embeddings = tf.convert_to_tensor(data[2], tf.float32)
