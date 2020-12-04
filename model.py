@@ -45,11 +45,11 @@ class Model(tf.keras.Model):
 
         emotion_logits = self.emotion_output_layer(H_BAR)
         # print("Emotion Logits Shape", np.shape(emotion_logits))
-        # emotion_logits = tf.convert_to_tensor(tf.where(emotion_logits > .5, 1.0, 0.0), tf.float32)
+        # emotion_logits = tf.where(emotion_logits > .5, 1.0, 0.0)
         # print("Emotion Logits", emotion_logits)
 
         sentiment_logits = self.sentiment_output_layer(H_HAT)
-        # sentiment_logit = tf.convert_to_tensor(tf.where(sentiment_logit > .5, 1.0, -1.0), tf.float32)
+        # sentiment_logits = tf.where(sentiment_logits > .5, 1.0, -1.0)
 
         # return emotion_logits, sentiment_logit
         return emotion_logits, sentiment_logits

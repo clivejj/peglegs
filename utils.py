@@ -48,10 +48,14 @@ def setup(overwrite=False):
     word_2_vec = get_vec(10 ** 6)
     print("done loading word_2_vec")
 
-    vocab, sentences, sentiment_labels, emotion_labels = preprocess(
+    vocab, train_sentences, train_sentiment_labels, train_emotion_labels = preprocess(
         "data/train_tweet_sentiment.csv", "data/train_emotion.csv", word_2_vec
     )
     print("done first pre-process")
+
+    ____, test_sentences, test_sentiment_labels, test_emotion_labels = preprocess(
+        "data/test_tweet_sentiment.csv", "data/test_emotion.csv", word_2_vec
+    )
 
     temp_embeddings = create_embeddings(vocab, word_2_vec)
     word_2_vec = get_vec(5 * (10 ** 5))
@@ -66,11 +70,16 @@ def setup(overwrite=False):
 
     data = (
         vocab,
-        sentences,
+        train_sentences,
         embeddings,
         synonym_indices,
-        sentiment_labels,
-        emotion_labels,
+        train_sentiment_labels,
+        train_emotion_labels,
+        test_sentences,
+        test_sentiment_labels,
+        test_emotion_labels,
     )
 
     pickle.dump(data, open("data/data.pickle", "wb"))
+
+
