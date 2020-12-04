@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from utils import construct_row
 
 
 class Model(tf.keras.Model):
@@ -65,37 +66,19 @@ class Model(tf.keras.Model):
 		Then, calculate m for the word by summing this up, and then create h by concatenating the
 		hidden state for the word and m
 		"""
+        out = self.primary_attention_dense_layer(hidden_states)
 
         # construct first row of hs matrix
-        out = self.primary_attention_dense_layer(hidden_states)
-        word = tf.gather(sentence, 0)
-        index = 0
-        synonym_embeddings = tf.nn.embedding_lookup(
-            embedding_matrix, tf.gather(synonym_indices, word)
+        hs = construct_row(
+            0, sentence[0], out, hidden_states, embedding_matrix, synonym_indices
         )
-        out_temp = tf.expand_dims(out[index, :], 1)
-        coefficients = tf.math.exp(tf.matmul(synonym_embeddings, out_temp))
-        m = tf.reduce_sum(coefficients * synonym_embeddings, 0)
-        h = tf.reshape(m + hidden_states[index, :], (1, -1))
-
-        hs = h
-
+        # construct remaining rows of hs matrix
         for index, word in enumerate(sentence[1:]):
-            synonym_embeddings = tf.nn.embedding_lookup(
-                embedding_matrix, tf.gather(synonym_indices, word)
+            h = construct_row(
+                index, word, out, hidden_states, embedding_matrix, synonym_indices
             )
-            # print("Synonym Embeddings Shape", np.shape(synonym_embeddings))
-            out_temp = tf.expand_dims(out[index, :], 1)
-            # print("Out_Temp Shape", np.shape(out_temp))
-            coefficients = tf.math.exp(tf.matmul(synonym_embeddings, out_temp))
-            m = tf.reduce_sum(coefficients * synonym_embeddings, 0)
-            h = tf.reshape(m + hidden_states[index, :], (1, -1))
-            # print("h_hat Shape", np.shape(h))
-            # print(h)
             hs = tf.concat([hs, h], 0)
-            # hs[index, :] = h
-        # return tf.zeros((17, 300))
-        # return tf.convert_to_tensor(hs, tf.float32)
+
         return hs
 
     def secondary_attention(self, h_hats):

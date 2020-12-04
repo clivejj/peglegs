@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras import Model
-from utils import unpickle, get_batch
+from utils import unpickle, get_batch, setup
 from model import Model
 
 
@@ -19,7 +19,7 @@ def train(
         with tf.GradientTape() as tape:
             emotion_batch_loss = 0
             sentiment_batch_loss = 0
-            # acc = []
+            acc = []
 
             for index, tweet in enumerate(batch_inputs):
                 emotion_logits, sentiment_logit = model.call(
@@ -31,20 +31,16 @@ def train(
                 sentiment_batch_loss += model.loss_function(
                     tf.expand_dims(batch_sentiment_labels[index], 0,), sentiment_logit,
                 )
-                # acc += [sentiment_logit]
-            batch_loss = emotion_batch_loss + sentiment_batch_loss
+                acc += [sentiment_logit]
+            batch_loss = (emotion_batch_loss / 8) + sentiment_batch_loss
 
-        """acc = np.squeeze(
+        acc = np.squeeze(
             tf.cast(tf.math.sigmoid(tf.convert_to_tensor(acc)) > 0.5, np.float32), 2
         )
-        print(tf.cast(batch_sentiment_labels, np.int32))
-        print(acc)"""
+        accuracy = tf.reduce_sum(tf.cast(acc == batch_sentiment_labels, tf.int32))
+        print(accuracy / 64)
         print(batch_loss)
         # batch_loss = emotion_batch_loss + sentiment_batch_loss
-        """print(sentiment_logit)
-        print(emotion_logits)
-        print(batch_sentiment_labels)
-        print(accuracy)"""
 
         gradients = tape.gradient(batch_loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -89,6 +85,7 @@ def test(
 
 def main():
     # Unpickles data from file, stores it as dictionary of length 4
+    setup(overwrite=False)
     data = unpickle("data/data.pickle")
     # A dictionary that keys every word in our vocabulary to an index
     vocab = data[0]

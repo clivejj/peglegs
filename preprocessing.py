@@ -29,14 +29,16 @@ def preprocess(sentimentFile, emotionFile, word_2_vec):
         # remove first line
         data = list(csv.reader(f))[1:]
     num_tweets = len(data)
-    # (num_tweets x 1) aray containing sentiment labels for each sentence (-1, 0, 1)
-    sentiment_labels = np.zeros((num_tweets, 1))
+    # (num_tweets x 1) aray containing sentiment labels for each sentence (0, 1)
+    sentiment_labels = []
     # list of np arrays, with each array containing indices for the words in that sentence
-    sentences = [None] * num_tweets
+    sentences = []
     i = 0
     # loop thru every row in csv file, extract data
     for tweet_index in range(num_tweets):
         row = data[tweet_index]
+        if row[4] == "other":
+            continue
         # extract text of tweet and clean it with ekphrasis
         tweet = text_processor.pre_process_doc(row[0])
         # tweet = sum([seg.segment(x).split() for x in tweet if len(x) > 1], [])
@@ -56,13 +58,14 @@ def preprocess(sentimentFile, emotionFile, word_2_vec):
             else:
                 i += 1
 
-        sentences[tweet_index] = np.asarray(word_indices, dtype=np.int32)
+        sentences += [np.asarray(word_indices, dtype=np.int32)]
 
         # extract sentiment
         sentiment = row[4]
-        sentiment = ["neg", "other", "pos"].index(sentiment) - 1
-        sentiment_labels[tweet_index] = sentiment
-    print(i)
+        sentiment = ["neg", "pos"].index(sentiment)
+        sentiment_labels += [sentiment]
+    sentiment_labels = np.reshape(np.asarray(sentiment_labels), (-1, 1))
+    # print(np.shape(sentiment_labels))
     # create labels for emotions for each sentence
     # label is either 0 or 1 for each emotion
     emotion_labels = np.zeros((num_tweets, 8))
@@ -92,7 +95,7 @@ def expand_vocab(vocab, word_2_vec, embeddings, display_progress=True):
         if display_progress:
             if np.floor(index * 100 / len_corpus) != percent_progress:
                 percent_progress = np.floor(index * 100 / len_corpus)
-                print("approx %%%d complete" % percent_progress)
+                print("approx %d%% complete" % percent_progress)
         synonyms = [
             x[0] for x in word_2_vec.similar_by_vector(embeddings[vocab[word]], topn=4)
         ]
