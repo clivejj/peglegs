@@ -100,8 +100,8 @@ def main():
     train_vocab = data[0]
     # A list of the tweets that we will be training on (2914 tweets)
     train_sentences = data[1]
-    for i in range(len(train_sentences)):
-        train_sentences[i] = tf.convert_to_tensor(train_sentences[i], tf.int32)
+    """for i in range(len(train_sentences)):
+        train_sentences[i] = tf.convert_to_tensor(train_sentences[i], tf.int32)"""
     # print("Sentences", len(sentences))
     # An embedding matrix that maps each word to a 300 Dimensional Embedding
     train_embeddings = tf.convert_to_tensor(data[2], tf.float32)
@@ -134,8 +134,8 @@ def main():
 
     test_vocab = data[0]
     test_sentences = data[1]
-    for i in range(len(train_sentences)):
-        train_sentences[i] = tf.convert_to_tensor(train_sentences[i], tf.int32)
+    """for i in range(len(train_sentences)):
+        train_sentences[i] = tf.convert_to_tensor(train_sentences[i], tf.int32)"""
     test_embeddings = tf.convert_to_tensor(data[2], tf.float32)
     test_synonym_indices = tf.convert_to_tensor(data[3], tf.int32)
     test_sentiment_labels = tf.convert_to_tensor(data[4], tf.float32)
