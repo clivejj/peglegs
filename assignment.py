@@ -77,6 +77,8 @@ def test(
         )
         emotionF1 += emotion_f1_batch
         sentimentF1 += sentiment_f1_batch
+        if index % 100 == 0:
+            print(sentimentF1 / index)
         # print("----")
         # print(emotion_f1_batch)
         # print(sentiment_f1_batch)
@@ -168,6 +170,8 @@ def main():
     vocab = data[0]
     # A list of the tweets that we will be training on (2914 tweets)
     train_sentences = data[1]
+    for i in range(len(train_sentences)):
+        train_sentences[i] = tf.convert_to_tensor(train_sentences[i], tf.int32)
     # print("Sentences", len(sentences))
     # An embedding matrix that maps each word to a 300 Dimensional Embedding
     embeddings = tf.convert_to_tensor(data[2], tf.float32)
@@ -183,6 +187,8 @@ def main():
     train_emotion_labels = tf.convert_to_tensor(data[5], tf.float32)
 
     test_sentences = data[6]
+    for j in range(len(test_sentences)):
+        test_sentences[j] = tf.convert_to_tensor(test_sentences[j], tf.int32)
 
     test_sentiment_labels = tf.convert_to_tensor(data[7], tf.float32)
 

@@ -15,9 +15,7 @@ class Model(tf.keras.Model):
         # Trainable parameters
 
         self.biLSTM = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(
-                units=int(self.h1 / 2), activation="relu", return_sequences=True,
-            )
+            tf.keras.layers.LSTM(units=int(self.h1 / 2), return_sequences=True,)
         )
         self.primary_attention_dense_layer = tf.keras.layers.Dense(self.h1)
         self.secondary_attention_dense_layer = tf.keras.layers.Dense(
