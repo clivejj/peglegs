@@ -100,5 +100,7 @@ class Model(tf.keras.Model):
         # print("Labels Type", labels)
         # print("Logits Type", logits)
         # return tf.convert_to_tensor(6.3)
-        return tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels, logits))
+        return tf.reduce_sum(
+            tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=logits)
+        )
 
