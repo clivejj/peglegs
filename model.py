@@ -73,7 +73,8 @@ class Model(tf.keras.Model):
             0, sentence[0], out, hidden_states, embedding_matrix, synonym_indices
         )
         # construct remaining rows of hs matrix
-        for index, word in enumerate(sentence[1:]):
+        for index, word in range(1, len(sentence)):
+            word = sentence[index]
             h = construct_row(
                 index, word, out, hidden_states, embedding_matrix, synonym_indices
             )
