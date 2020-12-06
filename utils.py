@@ -41,21 +41,24 @@ def construct_row(
     return h
 
 
-def setup(overwrite=False):
-    if path.exists("data/data.pickle") and not overwrite:
+def setup(isTraining, overwrite=False):
+    if isTraining and path.exists("data/training.pickle") and not overwrite:
         return
+    if not isTraining and path.exists("data/testing.pickle") and not overwrite:
+        return
+
+    if isTraining:
+        files = ("data/train_tweet_sentiment.csv", "data/train_emotion.csv")
+    else:
+        files = ("data/test_tweet_sentiment.csv", "data/test_emotion.csv")
 
     word_2_vec = get_vec(10 ** 6)
     print("done loading word_2_vec")
 
-    vocab, train_sentences, train_sentiment_labels, train_emotion_labels = preprocess(
-        "data/train_tweet_sentiment.csv", "data/train_emotion.csv", word_2_vec
+    (vocab, sentences, sentiment_labels, emotion_labels) = preprocess(
+        files[0], files[1], word_2_vec
     )
     print("done first pre-process")
-
-    ____, test_sentences, test_sentiment_labels, test_emotion_labels = preprocess(
-        "data/test_tweet_sentiment.csv", "data/test_emotion.csv", word_2_vec
-    )
 
     temp_embeddings = create_embeddings(vocab, word_2_vec)
     word_2_vec = get_vec(5 * (10 ** 5))
@@ -70,17 +73,16 @@ def setup(overwrite=False):
 
     data = (
         vocab,
-        train_sentences,
+        sentences,
         embeddings,
         synonym_indices,
-        train_sentiment_labels,
-        train_emotion_labels,
-        test_sentences,
-        test_sentiment_labels,
-        test_emotion_labels,
+        sentiment_labels,
+        emotion_labels,
     )
-
-    pickle.dump(data, open("data/data.pickle", "wb"))
+    if isTraining:
+        pickle.dump(data, open("data/training.pickle", "wb"))
+    if not isTraining:
+        pickle.dump(data, open("data/testing.pickle", "wb"))
 
 
 """def f1(predictions, actual):

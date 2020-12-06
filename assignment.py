@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras import Model
 from utils import unpickle, get_batch, setup
+from preprocessing import get_vec
 from model import Model
 from sklearn.metrics import f1_score
 
@@ -79,78 +80,6 @@ def test(
         sentimentF1 += sentiment_f1_batch
         if index % 100 == 0:
             print(sentimentF1 / index)
-        # print("----")
-        # print(emotion_f1_batch)
-        # print(sentiment_f1_batch)
-
-        """emotion_f1 = f1(emotion_predictions)
-
-        EmotionTP = tf.cast(
-            tf.math.count_nonzero(emotion_logits * emotion_labels[index]), tf.float32
-        )
-        print("EmotionTP", EmotionTP)
-        EmotionTN = tf.cast(
-            tf.math.count_nonzero((emotion_labels[index] - 1) * (emotion_logits - 1)),
-            tf.float32,
-        )
-        print("EmotionTN", EmotionTN)
-        EmotionFP = tf.cast(
-            tf.math.count_nonzero(emotion_logits * (emotion_labels[index] - 1)),
-            tf.float32,
-        )
-        print("EmotionFP", EmotionFP)
-        EmotionFN = tf.cast(
-            tf.math.count_nonzero((emotion_logits - 1) * emotion_labels[index]),
-            tf.float32,
-        )
-        print("EmotionFN", EmotionFN)
-
-        ePrecision = tf.math.divide_no_nan(EmotionTP, EmotionTP + EmotionFP)
-        print("ePrecision", ePrecision)
-        eRecall = tf.math.divide_no_nan(EmotionTP, EmotionTP + EmotionFN)
-        print("eRecall", eRecall)
-
-        emotionF1 += tf.math.divide_no_nan(
-            2 * eRecall * ePrecision, eRecall + ePrecision
-        )
-        print("emotionF1", emotionF1)
-        emotionRecall += eRecall
-        print("emotionRecall", emotionRecall)
-
-        SentimentTP = tf.cast(
-            tf.math.count_nonzero(sentiment_logits * sentiment_labels[index]),
-            tf.float32,
-        )
-        print("SentimentTP", SentimentTP)
-        SentimentTN = tf.cast(
-            tf.math.count_nonzero(
-                (sentiment_logits - 1) * (sentiment_labels[index] - 1)
-            ),
-            tf.float32,
-        )
-        print("SentimentTN", SentimentTN)
-        SentimentFP = tf.cast(
-            tf.math.count_nonzero(sentiment_logits * (sentiment_labels[index] - 1)),
-            tf.float32,
-        )
-        print("SentimentFP", SentimentFP)
-        SentimentFN = tf.cast(
-            tf.math.count_nonzero((sentiment_logits - 1) * sentiment_labels[index]),
-            tf.float32,
-        )
-        print("SentimentFN", SentimentFN)
-
-        sPrecision = tf.math.divide_no_nan(SentimentTP, SentimentTP + SentimentFP)
-        print("sPrecision", sPrecision)
-        sRecall = tf.math.divide_no_nan(SentimentTP, SentimentTP + SentimentFN)
-        print("sRecall", sRecall)
-
-        sentimentF1 += tf.math.divide_no_nan(
-            2 * sRecall * sPrecision, sRecall + sPrecision
-        )
-        print("sentimentF1", sentimentF1)
-        sentimentPrecision += sPrecision
-        print("sentimentPrecision", sentimentPrecision)"""
 
     average_emotion_F1 = emotionF1 / len(test_inputs)
     print("Average Emotion F1", average_emotion_F1)
@@ -164,19 +93,20 @@ def test(
 
 def main():
     # Unpickles data from file, stores it as dictionary of length 4
-    setup(overwrite=False)
-    data = unpickle("data/data.pickle")
+    setup(isTraining=True, overwrite=False)
+    print("done processing training data")
+    data = unpickle("data/training.pickle")
     # A dictionary that keys every word in our vocabulary to an index
-    vocab = data[0]
+    train_vocab = data[0]
     # A list of the tweets that we will be training on (2914 tweets)
     train_sentences = data[1]
     for i in range(len(train_sentences)):
         train_sentences[i] = tf.convert_to_tensor(train_sentences[i], tf.int32)
     # print("Sentences", len(sentences))
     # An embedding matrix that maps each word to a 300 Dimensional Embedding
-    embeddings = tf.convert_to_tensor(data[2], tf.float32)
+    train_embeddings = tf.convert_to_tensor(data[2], tf.float32)
     # A dictionary that maps the index of a word to a list containing the indices of its 4 synonyms
-    synonym_indices = tf.convert_to_tensor(data[3], tf.int32)
+    train_synonym_indices = tf.convert_to_tensor(data[3], tf.int32)
 
     # A list of sentiment labels corresponding to tweets; labels can be -1 (negative), 0 (objective), or (1) positive
     # (2914, 1)
@@ -185,14 +115,7 @@ def main():
     # emotion being labelled. So, each tweet can be associated to several different emotions
     # Shape (2914, 8)
     train_emotion_labels = tf.convert_to_tensor(data[5], tf.float32)
-
-    test_sentences = data[6]
-    for j in range(len(test_sentences)):
-        test_sentences[j] = tf.convert_to_tensor(test_sentences[j], tf.int32)
-
-    test_sentiment_labels = tf.convert_to_tensor(data[7], tf.float32)
-
-    test_emotion_labels = tf.convert_to_tensor(data[8], tf.float32)
+    data = None
 
     model = Model()
 
@@ -201,17 +124,31 @@ def main():
         train_sentences,
         train_emotion_labels,
         train_sentiment_labels,
-        embeddings,
-        synonym_indices,
+        train_embeddings,
+        train_synonym_indices,
     )
+
+    setup(isTraining=False, overwrite=False)
+    print("done processing testing data")
+    data = unpickle("data/testing.pickle")
+
+    test_vocab = data[0]
+    test_sentences = data[1]
+    for i in range(len(train_sentences)):
+        train_sentences[i] = tf.convert_to_tensor(train_sentences[i], tf.int32)
+    test_embeddings = tf.convert_to_tensor(data[2], tf.float32)
+    test_synonym_indices = tf.convert_to_tensor(data[3], tf.int32)
+    test_sentiment_labels = tf.convert_to_tensor(data[4], tf.float32)
+    test_emotion_labels = tf.convert_to_tensor(data[5], tf.float32)
+    data = None
 
     test(
         model,
         test_sentences,
         test_emotion_labels,
         test_sentiment_labels,
-        embeddings,
-        synonym_indices,
+        test_embeddings,
+        test_synonym_indices,
     )
 
 
