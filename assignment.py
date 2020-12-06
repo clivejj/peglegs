@@ -3,6 +3,7 @@ import numpy as np
 from tensorflow.keras import Model
 from utils import unpickle, get_batch, setup
 from model import Model
+from sklearn.metrics import f1_score
 
 
 def train(
@@ -60,32 +61,81 @@ def test(
             tweet, embeddings, synonym_indices,
         )
 
-        EmotionTP = tf.cast(tf.math.count_nonzero(emotion_logits * emotion_labels[index]), tf.float32)
+        emotion_predictions = tf.squeeze(
+            tf.cast(tf.math.sigmoid(emotion_logits) > 0.5, tf.float32), 0
+        )
+        sentiment_predictions = tf.cast(
+            tf.math.sigmoid(sentiment_logits) > 0.5, tf.float32
+        )
+        # print(emotion_labels[index, :])
+        # print(emotion_predictions)
+        emotion_f1_batch = f1_score(emotion_labels[index, :], emotion_predictions)
+        # print(sentiment_labels[index, :])
+        # print(sentiment_predictions)
+        sentiment_f1_batch = tf.cast(
+            sentiment_labels[index, :] == sentiment_predictions, tf.float32
+        )
+        emotionF1 += emotion_f1_batch
+        sentimentF1 += sentiment_f1_batch
+        # print("----")
+        # print(emotion_f1_batch)
+        # print(sentiment_f1_batch)
+
+        """emotion_f1 = f1(emotion_predictions)
+
+        EmotionTP = tf.cast(
+            tf.math.count_nonzero(emotion_logits * emotion_labels[index]), tf.float32
+        )
         print("EmotionTP", EmotionTP)
-        EmotionTN = tf.cast(tf.math.count_nonzero((emotion_labels[index] - 1) * (emotion_logits - 1)), tf.float32)
+        EmotionTN = tf.cast(
+            tf.math.count_nonzero((emotion_labels[index] - 1) * (emotion_logits - 1)),
+            tf.float32,
+        )
         print("EmotionTN", EmotionTN)
-        EmotionFP = tf.cast(tf.math.count_nonzero(emotion_logits * (emotion_labels[index] - 1)), tf.float32)
+        EmotionFP = tf.cast(
+            tf.math.count_nonzero(emotion_logits * (emotion_labels[index] - 1)),
+            tf.float32,
+        )
         print("EmotionFP", EmotionFP)
-        EmotionFN = tf.cast(tf.math.count_nonzero((emotion_logits - 1) * emotion_labels[index]), tf.float32)
+        EmotionFN = tf.cast(
+            tf.math.count_nonzero((emotion_logits - 1) * emotion_labels[index]),
+            tf.float32,
+        )
         print("EmotionFN", EmotionFN)
 
         ePrecision = tf.math.divide_no_nan(EmotionTP, EmotionTP + EmotionFP)
         print("ePrecision", ePrecision)
         eRecall = tf.math.divide_no_nan(EmotionTP, EmotionTP + EmotionFN)
         print("eRecall", eRecall)
-        
-        emotionF1 += tf.math.divide_no_nan(2 * eRecall * ePrecision, eRecall + ePrecision)
+
+        emotionF1 += tf.math.divide_no_nan(
+            2 * eRecall * ePrecision, eRecall + ePrecision
+        )
         print("emotionF1", emotionF1)
         emotionRecall += eRecall
         print("emotionRecall", emotionRecall)
 
-        SentimentTP = tf.cast(tf.math.count_nonzero(sentiment_logits * sentiment_labels[index]), tf.float32)
+        SentimentTP = tf.cast(
+            tf.math.count_nonzero(sentiment_logits * sentiment_labels[index]),
+            tf.float32,
+        )
         print("SentimentTP", SentimentTP)
-        SentimentTN = tf.cast(tf.math.count_nonzero((sentiment_logits - 1) * (sentiment_labels[index] - 1)), tf.float32)
+        SentimentTN = tf.cast(
+            tf.math.count_nonzero(
+                (sentiment_logits - 1) * (sentiment_labels[index] - 1)
+            ),
+            tf.float32,
+        )
         print("SentimentTN", SentimentTN)
-        SentimentFP = tf.cast(tf.math.count_nonzero(sentiment_logits * (sentiment_labels[index] - 1)), tf.float32)
+        SentimentFP = tf.cast(
+            tf.math.count_nonzero(sentiment_logits * (sentiment_labels[index] - 1)),
+            tf.float32,
+        )
         print("SentimentFP", SentimentFP)
-        SentimentFN = tf.cast(tf.math.count_nonzero((sentiment_logits - 1) * sentiment_labels[index]), tf.float32)
+        SentimentFN = tf.cast(
+            tf.math.count_nonzero((sentiment_logits - 1) * sentiment_labels[index]),
+            tf.float32,
+        )
         print("SentimentFN", SentimentFN)
 
         sPrecision = tf.math.divide_no_nan(SentimentTP, SentimentTP + SentimentFP)
@@ -93,19 +143,21 @@ def test(
         sRecall = tf.math.divide_no_nan(SentimentTP, SentimentTP + SentimentFN)
         print("sRecall", sRecall)
 
-        sentimentF1 += tf.math.divide_no_nan(2 * sRecall * sPrecision, sRecall + sPrecision)
+        sentimentF1 += tf.math.divide_no_nan(
+            2 * sRecall * sPrecision, sRecall + sPrecision
+        )
         print("sentimentF1", sentimentF1)
         sentimentPrecision += sPrecision
-        print("sentimentPrecision", sentimentPrecision)
+        print("sentimentPrecision", sentimentPrecision)"""
 
     average_emotion_F1 = emotionF1 / len(test_inputs)
     print("Average Emotion F1", average_emotion_F1)
-    average_emotion_Recall = emotionRecall / len(test_inputs)
-    print("Average Emotion Recall", average_emotion_Recall)
+    # average_emotion_Recall = emotionRecall / len(test_inputs)
+    # print("Average Emotion Recall", average_emotion_Recall)
     average_sentiment_F1 = sentimentF1 / len(test_inputs)
     print("Average Sentiment F1", average_sentiment_F1)
-    average_sentiment_Precision = sentimentPrecision / len(test_inputs)
-    print("Average Sentiment Precision", average_sentiment_Precision)
+    # average_sentiment_Precision = sentimentPrecision / len(test_inputs)
+    # print("Average Sentiment Precision", average_sentiment_Precision)
 
 
 def main():
@@ -116,8 +168,6 @@ def main():
     vocab = data[0]
     # A list of the tweets that we will be training on (2914 tweets)
     train_sentences = data[1]
-    for i in range(len(train_sentences)):
-        train_sentences[i] = tf.convert_to_tensor(train_sentences[i], tf.int32)
     # print("Sentences", len(sentences))
     # An embedding matrix that maps each word to a 300 Dimensional Embedding
     embeddings = tf.convert_to_tensor(data[2], tf.float32)
@@ -133,8 +183,6 @@ def main():
     train_emotion_labels = tf.convert_to_tensor(data[5], tf.float32)
 
     test_sentences = data[6]
-    for j in range(len(test_sentences)):
-        test_sentences[j] = tf.convert_to_tensor(test_sentences[j], tf.int32)
 
     test_sentiment_labels = tf.convert_to_tensor(data[7], tf.float32)
 
@@ -143,11 +191,21 @@ def main():
     model = Model()
 
     train(
-        model, train_sentences, train_emotion_labels, train_sentiment_labels, embeddings, synonym_indices
+        model,
+        train_sentences,
+        train_emotion_labels,
+        train_sentiment_labels,
+        embeddings,
+        synonym_indices,
     )
 
     test(
-        model, test_sentences, test_emotion_labels, test_sentiment_labels, embeddings, synonym_indices
+        model,
+        test_sentences,
+        test_emotion_labels,
+        test_sentiment_labels,
+        embeddings,
+        synonym_indices,
     )
 
 

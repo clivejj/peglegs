@@ -83,3 +83,13 @@ def setup(overwrite=False):
     pickle.dump(data, open("data/data.pickle", "wb"))
 
 
+"""def f1(predictions, actual):
+    predict_pos = predictions == 1
+    actual_pos = actual == 1
+    TP = tf.reduce_sum(tf.cast(predict_pos and actual_pos, tf.float32))
+    FP = tf.reduce_sum(tf.cast(predict_pos and (actual == 0), tf.float32))
+    FN = tf.reduce_sum(tf.cast((predictions == 0) and actual_pos, tf.float32))
+    precision = TP / (TP + FP)
+    recall = TP / (TP + FN)
+    return ((1 / precision) + (1 / recall)) / 2"""
+
