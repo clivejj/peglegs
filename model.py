@@ -19,14 +19,19 @@ class Model(tf.keras.Model):
             tf.keras.layers.LSTM(units=int(self.h1 / 2), return_sequences=True,)
         )
 
-        self.primary_attention_emotion_dense_layer = tf.keras.layers.Dense(self.h1)
-        self.primary_attention_sentiment_dense_layer = tf.keras.layers.Dense(self.h1)
+        # self.primary_attention_emotion_dense_layer = tf.keras.layers.Dense(self.h1)
+        # self.primary_attention_sentiment_dense_layer = tf.keras.layers.Dense(self.h1)
+        self.primary_attention_dense_layer = tf.keras.layers.Dense(self.h1)
 
-        self.secondary_attention_emotion_dense_layer = tf.keras.layers.Dense(
-            1, activation="tanh"
-        )
-        self.secondary_attention_sentiment_dense_layer = tf.keras.layers.Dense(
-            1, activation="tanh"
+        # self.secondary_attention_emotion_dense_layer = tf.keras.layers.Dense(
+        #     1, activation="tanh"
+        # )
+        # self.secondary_attention_sentiment_dense_layer = tf.keras.layers.Dense(
+        #     1, activation="tanh"
+        # )
+
+        self.secondary_attention_dense_layer = tf.keras.layers.Dense(
+            1, activation = "tanh"
         )
 
         self.emotion_output_layer = tf.keras.layers.Dense(units=8)
@@ -41,7 +46,7 @@ class Model(tf.keras.Model):
         # print("Hidden states shape", np.shape(hidden_states))
         if(self.type == "full"):
 
-            h_hats = self.primary_attention_sentiment(
+            h_hats = self.primary_attention_emotion(
                 sentence, hidden_states, embedding_matrix, synonym_indices
             )
 
@@ -49,7 +54,7 @@ class Model(tf.keras.Model):
                 sentence, hidden_states, embedding_matrix, synonym_indices
             )
 
-            H_HAT = tf.expand_dims(self.secondary_attention_sentiment(h_hats), 0)
+            H_HAT = tf.expand_dims(self.secondary_attention_emotion(h_hats), 0)
 
             H_BAR = tf.expand_dims(self.secondary_attention_emotion(h_bars), 0)
 
@@ -63,7 +68,7 @@ class Model(tf.keras.Model):
 
         elif(self.type == "multi_s"):
             
-            H_HAT = tf.expand_dims(self.secondary_attention_sentiment(hidden_states), 0)
+            H_HAT = tf.expand_dims(self.secondary_attention_emotion(hidden_states), 0)
         
             H_BAR = tf.expand_dims(self.secondary_attention_emotion(hidden_states), 0)
 
@@ -76,11 +81,11 @@ class Model(tf.keras.Model):
        
         elif(self.type == "sentiment_only_p_and_s"):
 
-            h_hats = self.primary_attention_sentiment(
+            h_hats = self.primary_attention_emotion(
                 sentence, hidden_states, embedding_matrix, synonym_indices
             )
 
-            H_HAT = tf.expand_dims(self.secondary_attention_sentiment(h_hats), 0)
+            H_HAT = tf.expand_dims(self.secondary_attention_emotion(h_hats), 0)
 
             sentiment_logits = self.sentiment_output_layer(H_HAT)
 
@@ -89,7 +94,7 @@ class Model(tf.keras.Model):
 
         elif(self.type == "sentiment_only_s"):
 
-            H_HAT = tf.expand_dims(self.secondary_attention_sentiment(hidden_states), 0)
+            H_HAT = tf.expand_dims(self.secondary_attention_emotion(hidden_states), 0)
 
             sentiment_logits = self.sentiment_output_layer(H_HAT)
 
@@ -141,7 +146,7 @@ class Model(tf.keras.Model):
 		Then, calculate m for the word by summing this up, and then create h by concatenating the
 		hidden state for the word and m
 		"""
-        out = self.primary_attention_emotion_dense_layer(hidden_states)
+        out = self.primary_attention_dense_layer(hidden_states)
 
         # construct first row of hs matrix
         h_bars = construct_row(
@@ -161,7 +166,7 @@ class Model(tf.keras.Model):
         self, sentence, hidden_states, embedding_matrix, synonym_indices
     ):
 
-        out = self.primary_attention_sentiment_dense_layer(hidden_states)
+        out = self.primary_attention_dense_layer(hidden_states)
 
         h_hats = construct_row(
             0, sentence[0], out, hidden_states, embedding_matrix, synonym_indices
@@ -187,7 +192,7 @@ class Model(tf.keras.Model):
 		Then, calculate m for the word by summing this up, and then create h by concatenating the
 		hidden state for the word and m
 		"""
-        coefficients = tf.math.exp(self.secondary_attention_emotion_dense_layer(h_bars))
+        coefficients = tf.math.exp(self.secondary_attention_dense_layer(h_bars))
         return tf.reduce_sum(coefficients * h_bars, 0)
 
 

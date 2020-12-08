@@ -35,7 +35,7 @@ def train(
 						tf.expand_dims(batch_sentiment_labels[index], 0), sentiment_logit
 					)
 					acc += [sentiment_logit]
-				batch_loss = (emotion_batch_loss / 4) + sentiment_batch_loss
+				batch_loss = (emotion_batch_loss/ 4) + sentiment_batch_loss
 
 			acc = np.squeeze(
 				tf.cast(tf.math.sigmoid(tf.convert_to_tensor(acc)) > 0.5, np.float32), 2
@@ -81,7 +81,7 @@ def train(
 					emotion_batch_loss += model.loss_function(
 						tf.expand_dims(batch_emotion_labels[index], 0), emotion_logits
 					)
-				batch_loss = emotion_batch_loss / 4 
+				batch_loss = emotion_batch_loss / 4
 			# acc = np.squeeze(
 			# 	tf.cast(tf.math.sigmoid(tf.convert_to_tensor(acc)) > 0.5, np.float32), 2
 			# )  
