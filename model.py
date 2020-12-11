@@ -5,6 +5,9 @@ from utils import construct_row
 
 class Model(tf.keras.Model):
     def __init__(self, type):
+        
+        # Initialize the model, building off of the keras model
+        
         super(Model, self).__init__()
 
         # HyperParameters
@@ -19,16 +22,7 @@ class Model(tf.keras.Model):
             tf.keras.layers.LSTM(units=int(self.h1 / 2), return_sequences=True,)
         )
 
-        # self.primary_attention_emotion_dense_layer = tf.keras.layers.Dense(self.h1)
-        # self.primary_attention_sentiment_dense_layer = tf.keras.layers.Dense(self.h1)
         self.primary_attention_dense_layer = tf.keras.layers.Dense(self.h1)
-
-        # self.secondary_attention_emotion_dense_layer = tf.keras.layers.Dense(
-        #     1, activation="tanh"
-        # )
-        # self.secondary_attention_sentiment_dense_layer = tf.keras.layers.Dense(
-        #     1, activation="tanh"
-        # )
 
         self.secondary_attention_dense_layer = tf.keras.layers.Dense(
             1, activation = "tanh"
@@ -36,14 +30,16 @@ class Model(tf.keras.Model):
 
         self.emotion_output_layer = tf.keras.layers.Dense(units=8)
         self.sentiment_output_layer = tf.keras.layers.Dense(units=1)
+    # Run the forward training process. Depending on the type of the model,
+    # the function will call the appropriate feed forward routine
 
     def call(self, sentence, embedding_matrix, synonym_indices):
 
         embeddings = tf.nn.embedding_lookup(embedding_matrix, sentence)
-        # print("Embeddings Shape", np.shape(embeddings))
+  
         hidden_states = tf.squeeze(self.biLSTM(tf.expand_dims(embeddings, 0)))
-        # print(hidden_states)
-        # print("Hidden states shape", np.shape(hidden_states))
+    
+        # Make use of primary and secondary attention layers for both emotion and sentiment
         if(self.type == "full"):
 
             h_hats = self.primary_attention_emotion(
@@ -62,90 +58,85 @@ class Model(tf.keras.Model):
 
             emotion_logits = self.emotion_output_layer(H_BAR)
 
-            print("Returning Full Call")
+            # print("Returning Full Call")
             return emotion_logits, sentiment_logits
 
-
+        # Make use of only secondary attention layers for both emotion and sentiment
+    
         elif(self.type == "multi_s"):
             
-            H_HAT = tf.expand_dims(self.secondary_attention_emotion(hidden_states), 0)
+            H_HAT = tf.expand_dims(self.secondary_attention(hidden_states), 0)
         
-            H_BAR = tf.expand_dims(self.secondary_attention_emotion(hidden_states), 0)
+            H_BAR = tf.expand_dims(self.secondary_attention(hidden_states), 0)
 
             sentiment_logits = self.sentiment_output_layer(H_HAT)
 
             emotion_logits = self.emotion_output_layer(H_BAR)
         
-            print("Returning Multi_S Call")
+            # print("Returning Multi_S Call")
             return emotion_logits, sentiment_logits
-       
+       #
+       #  Make use of both primary attention and secondary attention layers for only sentiment
+       # 
         elif(self.type == "sentiment_only_p_and_s"):
 
-            h_hats = self.primary_attention_emotion(
+            h_hats = self.primary_attention(
                 sentence, hidden_states, embedding_matrix, synonym_indices
             )
 
-            H_HAT = tf.expand_dims(self.secondary_attention_emotion(h_hats), 0)
+            H_HAT = tf.expand_dims(self.secondary_attention(h_hats), 0)
 
             sentiment_logits = self.sentiment_output_layer(H_HAT)
 
-            print("Returning Sentiment_Only_P_and_S")
+            # print("Returning Sentiment_Only_P_and_S")
             return sentiment_logits
 
+        #Make use of only the secondary attention layer for sentiment only 
         elif(self.type == "sentiment_only_s"):
 
-            H_HAT = tf.expand_dims(self.secondary_attention_emotion(hidden_states), 0)
+            H_HAT = tf.expand_dims(self.secondary_attention(hidden_states), 0)
 
             sentiment_logits = self.sentiment_output_layer(H_HAT)
 
-            print("Returning Sentiment_Only_S")
+            # print("Returning Sentiment_Only_S")
             return sentiment_logits
-
+        # 
+        # Make use of Primary and secondary attention layers for only emotion
+        # 
         elif(self.type == "emotion_only_p_and_s"):
 
-            h_bars = self.primary_attention_emotion(
+            h_bars = self.primary_attention(
                 sentence, hidden_states, embedding_matrix, synonym_indices
             )
 
-            H_BAR = tf.expand_dims(self.secondary_attention_emotion(h_bars), 0)
+            H_BAR = tf.expand_dims(self.secondary_attention(h_bars), 0)
 
             emotion_logits = self.emotion_output_layer(H_BAR)
 
-            print("Returning Emotion Only P and S")
+            # print("Returning Emotion Only P and S")
             return emotion_logits
-
+        # 
+        # Make use of only secondary attention layer for emotion only
+        # 
         elif(self.type == "emotion_only_s"):
 
-            H_BAR = tf.expand_dims(self.secondary_attention_emotion(hidden_states), 0)
+            H_BAR = tf.expand_dims(self.secondary_attention(hidden_states), 0)
 
             emotion_logits = self.emotion_output_layer(H_BAR)
 
-            print("Returning Emotion Only S")
+            # print("Returning Emotion Only S")
             return emotion_logits
 
         else:
             print("Invalid Model Type")
-            return
+            return 0
 
-
-
-
-
-
-
-
-    def primary_attention_emotion(
+    '''
+    Apply primary attention layer rule to construct either h_bar or h_hat
+    '''
+    def primary_attention(
         self, sentence, hidden_states, embedding_matrix, synonym_indices
     ):
-        """
-		TODO: 
-		for each of the 4 synonyms of a word (retrieved using wn.synset),
-		calculate its attention using tf.math.exp( tf.matmul(
-		tf.matmul(tf.transpose(hidden_state for word), self.primary_attention) + self.primary_bias, synonym )
-
-		Then, calculate m for the word by summing this up, and then create h by concatenating the
-		hidden state for the word and m
-		"""
         out = self.primary_attention_dense_layer(hidden_states)
 
         # construct first row of hs matrix
@@ -161,51 +152,18 @@ class Model(tf.keras.Model):
             h_bars = tf.concat([h_bars, h_bar], 0)
 
         return h_bars
-
-    def primary_attention_sentiment(
-        self, sentence, hidden_states, embedding_matrix, synonym_indices
-    ):
-
-        out = self.primary_attention_dense_layer(hidden_states)
-
-        h_hats = construct_row(
-            0, sentence[0], out, hidden_states, embedding_matrix, synonym_indices
-        )
-
-        for index in range(1, len(sentence)):
-            word = sentence[index]
-            h_hat = construct_row(
-                index, word, out, hidden_states, embedding_matrix, synonym_indices
-            )
-            h_hats = tf.concat([h_hats, h_hat], 0)
-
-        return h_hats
-
-
-    def secondary_attention_emotion(self, h_bars):
-        """
-		TODO:
-		for each of the words in a sentence,
-		calculate its attention using tf.math.exp(tf.math.tanh(
-		tf.matmul(tf.transpose(hidden_state for word), self.secondary_attention) + self.secondary_bias))
-
-		Then, calculate m for the word by summing this up, and then create h by concatenating the
-		hidden state for the word and m
-		"""
+    '''
+    Apply secondary attention layer rule to construct either H_BAR or H_Hat
+    '''
+    def secondary_attention(self, h_bars):
         coefficients = tf.math.exp(self.secondary_attention_dense_layer(h_bars))
         return tf.reduce_sum(coefficients * h_bars, 0)
 
-
-    def secondary_attention_sentiment(self, h_hats):
-
-        coefficients = tf.math.exp(self.secondary_attention_sentiment_dense_layer(h_hats))
-        return tf.reduce_sum(coefficients * h_hats, 0)
-
+    '''
+    Calculate sigmoid loss
+    '''
     def loss_function(self, labels, logits):
         # Calculate the sum of the loss by comparing the labels with the inputted logits
-        # print("Labels Type", labels)
-        # print("Logits Type", logits)
-        # return tf.convert_to_tensor(6.3)
         return tf.reduce_sum(
             tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=logits)
         )

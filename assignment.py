@@ -6,7 +6,11 @@ from preprocessing import get_vec
 from model import Model
 from sklearn.metrics import f1_score, recall_score, precision_score
 
+'''
+Train the model for an epoch! Depending on what kind of model type was inputted in main,
+the function calls the corresponding routine
 
+'''
 def train(
 	model, train_inputs, emotion_labels, sentiment_labels, embeddings, synonym_indices
 ):
@@ -17,7 +21,10 @@ def train(
 		batch_inputs, batch_emotion_labels, batch_sentiment_labels = get_batch(
 			train_inputs, emotion_labels, sentiment_labels, batch_num, model.batch_size
 		)
-
+		# 
+		# If the model type is the full model or M1, train using both emotion and 
+		# sentiment logits
+		# 
 		if model.type == "full" or model.type == "multi_s":
 			with tf.GradientTape() as tape:
 				emotion_batch_loss = 0
@@ -45,7 +52,9 @@ def train(
 			print("Batch Loss", batch_loss)
 			gradients = tape.gradient(batch_loss, model.trainable_variables)
 			model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
+		#
+		# If the model type is S2 or S1, train only using the emotion logits
+		# 
 		elif model.type == "sentiment_only_p_and_s" or model.type == "sentiment_only_s":
 			with tf.GradientTape() as tape:
 				sentiment_batch_loss = 0
@@ -68,7 +77,9 @@ def train(
 			print("Batch Loss", batch_loss)
 			gradients = tape.gradient(batch_loss, model.trainable_variables)
 			model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
+		# 
+		# If the Model type is E2 or E1, train only using emotion logits
+		# 
 		elif model.type == "emotion_only_p_and_s" or model.type == "emotion_only_s" :
 			with tf.GradientTape() as tape:
 				emotion_batch_loss = 0
@@ -92,8 +103,11 @@ def train(
 			print("Invalid Model Type")
 			return
 
+'''
+Test the model for a data set! Depending on what kind of model type was inputted in main,
+the function calls the corresponding routine
 
-
+'''
 def test(
 	model, test_inputs, emotion_labels, sentiment_labels, embeddings, synonym_indices
 ):
@@ -153,9 +167,9 @@ def test(
 		else:
 			print("Invalid Model Type")
 			return
-
-		# if index % 100 == 0:
-		#     print(sentimentAcc / index)
+	# 
+	# Print appropriate metrics
+	# 
 	if model.type == "full" or model.type == "multi_s":
 		average_emotion_F1 = emotionF1 / len(test_inputs)
 		print("Average Emotion F1", average_emotion_F1)
@@ -189,8 +203,6 @@ def main():
 	train_vocab = data[0]
 	# A list of the tweets that we will be training on (2914 tweets)
 	train_sentences = data[1]
-	"""for i in range(len(train_sentences)):
-		train_sentences[i] = tf.convert_to_tensor(train_sentences[i], tf.int32)"""
 	# print("Sentences", len(sentences))
 	# An embedding matrix that maps each word to a 300 Dimensional Embedding
 	train_embeddings = tf.convert_to_tensor(data[2], tf.float32)
